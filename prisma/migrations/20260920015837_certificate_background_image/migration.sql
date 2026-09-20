@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `certificate` ADD COLUMN `backgroundImageUrl` TEXT NULL;
+ALTER TABLE `Certificate` ADD COLUMN `backgroundImageUrl` TEXT NULL;
 
 -- AlterTable
-ALTER TABLE `eligibilityevent` ADD COLUMN `backgroundImageUrl` TEXT NULL;
+ALTER TABLE `EligibilityEvent` ADD COLUMN `backgroundImageUrl` TEXT NULL;

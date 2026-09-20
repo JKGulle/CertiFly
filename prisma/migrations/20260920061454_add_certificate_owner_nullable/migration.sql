@@ -1,8 +1,8 @@
 -- AlterTable
-ALTER TABLE `certificate` ADD COLUMN `ownerId` VARCHAR(191) NULL;
+ALTER TABLE `Certificate` ADD COLUMN `ownerId` VARCHAR(191) NULL;
 
 -- AlterTable
-ALTER TABLE `eligibilityevent` ADD COLUMN `ownerId` VARCHAR(191) NULL;
+ALTER TABLE `EligibilityEvent` ADD COLUMN `ownerId` VARCHAR(191) NULL;
 
 -- CreateIndex
 CREATE INDEX `Certificate_ownerId_idx` ON `Certificate`(`ownerId`);
