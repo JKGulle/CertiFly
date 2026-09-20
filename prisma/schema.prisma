@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// The "event bus" — in production this is SQS/Kafka/RabbitMQ; here it's a
+// polled table so the whole pipeline runs with zero external infra.
+// Rows are the durable record of every certificate.eligible message.
+model EligibilityEvent {
+  id                 String    @id @default(uuid())
+  eventId            String // external id from the source system, e.g. "course-101:user-55"
+  eventType          String // COURSE_COMPLETION | EXAM_PASS | WEBINAR_CHECKIN | CUSTOM
+  eventName          String // "Intro to Data Science", "Cloud Practitioner Exam", ...
+  userId             String
+  userName           String
+  userEmail          String
+  templateKey        String    @default("default")
+  metadata           String?   @db.Text // JSON blob merged into the template
+  backgroundImageUrl String?   @db.Text // per-certificate override, not part of the template
+  status             String    @default("PENDING") // PENDING | PROCESSING | PROCESSED | FAILED | DEAD_LETTER
+  attempts           Int       @default(0)
+  lastError          String?   @db.Text
+  createdAt          DateTime  @default(now())
+  processedAt        DateTime?
+
+  // The /generate account this event's resulting certificate belongs to.
+  // Set from the session for admin-created events; defaults to the
+  // earliest-created account for the public /api/events ingress, which has
+  // no session to attribute ownership from.
+  ownerId String
+  owner   User    @relation(fields: [ownerId], references: [id])
+
+  @@index([status, createdAt])
+}
+
+// An account gating the /generate console. Each account only sees the
+// certificates it owns.
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  certificates Certificate[]
+  events       EligibilityEvent[]
+}
+
+// Versioned certificate designs. Only one version per key is "active" at a
+// time, but old versions are kept so past certificates keep rendering from
+// the template they were actually issued with.
+model Template {
+  id        String   @id @default(uuid())
+  key       String // slug shared across versions, e.g. "default"
+  version   Int
+  name      String
+  isActive  Boolean  @default(false)
+  config    String   @db.Text // JSON: { title, bodyTemplate, orgName, accentColor, signatureName, signatureTitle, logoUrl? }
+  createdAt DateTime @default(now())
+
+  certificates Certificate[]
+
+  @@unique([key, version])
+  @@index([key, isActive])
+}
+
+// The source of truth. Written once by the worker; read by the dashboard,
+// the recipient, and the public verification endpoint.
+model Certificate {
+  id                 String    @id @default(uuid())
+  verificationCode   String    @unique
+  eventId            String
+  eventType          String
+  eventName          String
+  recipientId        String
+  recipientName      String
+  recipientEmail     String
+  certificateTitle   String    @default("") // denormalized from Template.config.title, for reporting
+  templateId         String? // nulled out if the template is later deleted; templateVersion/certificateTitle keep the historical record
+  templateVersion    Int
+  backgroundImageUrl String?   @db.Text // per-certificate override, carried over on Reissue
+  pdfPath            String // storage key, not a public URL
+  sha256             String
+  status             String    @default("ISSUED") // ISSUED | REVOKED | REISSUED
+  issuedAt           DateTime  @default(now())
+  revokedAt          DateTime?
+  lastEmailedAt      DateTime?
+  emailSendCount     Int       @default(0)
+
+  // The /generate account this certificate belongs to — copied from the
+  // originating EligibilityEvent.ownerId at issuance time. Scopes every
+  // admin-facing list/report; the public /certificates list and
+  // /verify/:code stay unscoped since verification can't depend on issuer.
+  ownerId String
+  owner   User    @relation(fields: [ownerId], references: [id])
+
+  template Template? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, recipientId])
+  @@index([verificationCode])
+  @@index([recipientEmail])
+  @@index([eventType, status, issuedAt])
+  @@index([ownerId])
+}

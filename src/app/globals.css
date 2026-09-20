@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+/* Memphis Design — bold clashing color, thick black outlines, flat hard-edge
+   "sticker" shadows (no blur), and confetti geometry instead of soft gradients.
+   https://en.wikipedia.org/wiki/Memphis_Group */
+:root {
+  --bg: #fdf6e3;
+  --surface: #ffffff;
+  --surface-2: #ffe8a3;
+  --ink: #16161a;
+  --ink-dim: #55524f;
+  --line: #16161a;
+  --line-soft: color-mix(in srgb, var(--ink) 16%, transparent);
+
+  /* Hot pink — primary actions/links */
+  --accent: #ff3d81;
+  --accent-soft: #ffcbe3;
+  /* Bright mint/teal — issued/verified state */
+  --pipeline: #00b8a9;
+  --pipeline-soft: #9df3e6;
+  /* Coral-orange — revoked/error state */
+  --danger: #ff5a36;
+  --danger-soft: #ffcfba;
+
+  /* Confetti accents used for decoration + secondary status chips */
+  --sun: #ffd400;
+  --grape: #7b61ff;
+
+  --shadow-soft: 4px 4px 0 0 var(--ink);
+  --shadow-soft-lg: 8px 8px 0 0 var(--ink);
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-pipeline: var(--pipeline);
+  --color-pipeline-soft: var(--pipeline-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-sun: var(--sun);
+  --color-grape: var(--grape);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-soft-lg: var(--shadow-soft-lg);
+
+  /* Sharp, geometric corners — Memphis blocks, not soft-UI pills */
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, sans-serif;
+}
+
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(color-mix(in srgb, var(--ink) 10%, transparent) 1.5px, transparent 1.5px);
+  background-size: 26px 26px;
+  color: var(--ink);
+  font-family: var(--font-inter), ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif;
+  position: relative;
+}
+
+/* Signature confetti trim pinned to the top of the viewport */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 8px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent) 0 40px,
+    var(--sun) 40px 80px,
+    var(--pipeline) 80px 120px,
+    var(--grape) 120px 160px
+  );
+  z-index: 50;
+  pointer-events: none;
+}
+
+code, .mono {
+  font-family: ui-monospace, "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Thick outlines everywhere a plain `border` is used — Memphis blocks read as
+   cut-out shapes, not hairline cards. Dividers (`border-b`/`border-t`) are
+   left alone so dense tables don't turn into a grid of black bars. */
+.border {
+  border-width: 3px;
+}
+
+/* Hover-lift / press-in interaction for anything carrying the hard shadow —
+   scoped to button/a so it never fires on card or form wrappers that merely
+   reuse the shadow-soft utility for elevation. */
+button.shadow-soft,
+a.shadow-soft {
+  transition: transform 150ms var(--ease-soft), box-shadow 150ms var(--ease-soft);
+}
+button.shadow-soft:hover:not(:disabled),
+a.shadow-soft:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 var(--ink);
+}
+button.shadow-soft:active:not(:disabled),
+a.shadow-soft:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 var(--ink);
+}
+button.shadow-soft:disabled {
+  transform: none;
+  box-shadow: var(--shadow-soft);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bold, offset focus rings instead of the browser default square outline */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}

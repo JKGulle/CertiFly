@@ -1,0 +1,21 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: certifly
+      MYSQL_USER: certifly
+      MYSQL_PASSWORD: certifly
+      MYSQL_ROOT_PASSWORD: certifly_root
+    ports:
+      - "3306:3306"
+    volumes:
+      - certifly-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pcertifly_root"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  certifly-mysql:
