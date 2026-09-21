@@ -7,15 +7,16 @@ import { get, put } from "@vercel/blob";
 // box: callers deal in opaque storage keys, never real file paths, so this
 // can be swapped for an S3 SDK client without touching call sites.
 //
-// Local dev (no BLOB_READ_WRITE_TOKEN) writes to the local filesystem, which
+// Local dev (no Blob store connected) writes to the local filesystem, which
 // is the zero-infra path the README documents. On Vercel that filesystem is
-// read-only and ephemeral, so once BLOB_READ_WRITE_TOKEN is set (Vercel sets
-// it automatically for a connected Blob store) everything goes through
-// Vercel Blob instead. Keys returned from the local path are bare filenames;
-// keys returned from the Blob path are full URLs — every read function
-// branches on that shape, so callers never need to know which backend wrote
-// a given key.
-const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
+// read-only and ephemeral, so once a Blob store is connected — either via a
+// static BLOB_READ_WRITE_TOKEN or, as this project uses, OIDC (BLOB_STORE_ID
+// + VERCEL_OIDC_TOKEN, no static token) — everything goes through Vercel
+// Blob instead. Keys returned from the local path are bare filenames; keys
+// returned from the Blob path are full URLs — every read function branches
+// on that shape, so callers never need to know which backend wrote a given
+// key.
+const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN || !!process.env.BLOB_STORE_ID;
 
 const CERT_DIR = path.join(process.cwd(), "storage", "certificates");
 const BACKGROUND_DIR = path.join(process.cwd(), "storage", "backgrounds");
