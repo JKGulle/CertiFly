@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveBackgroundImage } from "@/lib/storage";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "http://localhost:3000";
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB — plenty for a certificate background, keeps PDFs from ballooning
@@ -32,9 +33,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Image is too large (max 5MB)" }, { status: 400 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const key = await saveBackgroundImage(buffer, extension);
-  const url = new URL(`/api/uploads/backgrounds/${key}`, APP_BASE_URL).toString();
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const key = await saveBackgroundImage(buffer, extension);
+    const url = new URL(`/api/uploads/backgrounds/${key}`, APP_BASE_URL).toString();
 
-  return NextResponse.json({ url });
+    return NextResponse.json({ url });
+  } catch (err) {
+    return unexpectedErrorResponse(err);
+  }
 }

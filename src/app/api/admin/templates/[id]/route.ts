@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { templateConfigSchema } from "@/lib/template";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const updateSchema = z.object({
   name: z.string().min(1),
@@ -26,39 +27,43 @@ export async function PATCH(
   }
   const { name, config } = parsed.data;
 
-  const target = await prisma.template.findUnique({ where: { id } });
-  if (!target) {
-    return NextResponse.json({ error: "Template not found" }, { status: 404 });
-  }
+  try {
+    const target = await prisma.template.findUnique({ where: { id } });
+    if (!target) {
+      return NextResponse.json({ error: "Template not found" }, { status: 404 });
+    }
 
-  const usageCount = await prisma.certificate.count({ where: { templateId: id } });
+    const usageCount = await prisma.certificate.count({ where: { templateId: id } });
 
-  if (usageCount === 0) {
-    const template = await prisma.template.update({
-      where: { id },
-      data: { name, config: JSON.stringify(config) },
+    if (usageCount === 0) {
+      const template = await prisma.template.update({
+        where: { id },
+        data: { name, config: JSON.stringify(config) },
+      });
+      return NextResponse.json({ template, newVersion: false });
+    }
+
+    const latest = await prisma.template.findFirst({
+      where: { key: target.key },
+      orderBy: { version: "desc" },
     });
-    return NextResponse.json({ template, newVersion: false });
-  }
+    const nextVersion = (latest?.version ?? target.version) + 1;
 
-  const latest = await prisma.template.findFirst({
-    where: { key: target.key },
-    orderBy: { version: "desc" },
-  });
-  const nextVersion = (latest?.version ?? target.version) + 1;
-
-  const template = await prisma.$transaction(async (tx) => {
-    await tx.template.updateMany({ where: { key: target.key }, data: { isActive: false } });
-    return tx.template.create({
-      data: {
-        key: target.key,
-        version: nextVersion,
-        name,
-        isActive: true,
-        config: JSON.stringify(config),
-      },
+    const template = await prisma.$transaction(async (tx) => {
+      await tx.template.updateMany({ where: { key: target.key }, data: { isActive: false } });
+      return tx.template.create({
+        data: {
+          key: target.key,
+          version: nextVersion,
+          name,
+          isActive: true,
+          config: JSON.stringify(config),
+        },
+      });
     });
-  });
 
-  return NextResponse.json({ template, newVersion: true }, { status: 201 });
+    return NextResponse.json({ template, newVersion: true }, { status: 201 });
+  } catch (err) {
+    return unexpectedErrorResponse(err);
+  }
 }

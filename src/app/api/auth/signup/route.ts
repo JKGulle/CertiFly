@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from "@/lib/session";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -20,22 +21,26 @@ export async function POST(request: Request) {
     );
   }
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
+    }
+
+    const user = await prisma.user.create({
+      data: { email, passwordHash: hashPassword(password) },
+    });
+
+    const response = NextResponse.json({ ok: true });
+    response.cookies.set(SESSION_COOKIE, createSessionToken(user.id), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_MAX_AGE_SECONDS,
+    });
+    return response;
+  } catch (err) {
+    return unexpectedErrorResponse(err);
   }
-
-  const user = await prisma.user.create({
-    data: { email, passwordHash: hashPassword(password) },
-  });
-
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set(SESSION_COOKIE, createSessionToken(user.id), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
-  return response;
 }

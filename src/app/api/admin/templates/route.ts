@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { templateConfigSchema } from "@/lib/template";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const createSchema = z.object({
   key: z.string().min(1),
@@ -27,27 +28,31 @@ export async function POST(req: NextRequest) {
   }
   const { key, name, config, activate } = parsed.data;
 
-  const latest = await prisma.template.findFirst({
-    where: { key },
-    orderBy: { version: "desc" },
-  });
-  const nextVersion = (latest?.version ?? 0) + 1;
-  const shouldActivate = activate ?? true;
-
-  const template = await prisma.$transaction(async (tx) => {
-    if (shouldActivate) {
-      await tx.template.updateMany({ where: { key }, data: { isActive: false } });
-    }
-    return tx.template.create({
-      data: {
-        key,
-        version: nextVersion,
-        name,
-        isActive: shouldActivate,
-        config: JSON.stringify(config),
-      },
+  try {
+    const latest = await prisma.template.findFirst({
+      where: { key },
+      orderBy: { version: "desc" },
     });
-  });
+    const nextVersion = (latest?.version ?? 0) + 1;
+    const shouldActivate = activate ?? true;
 
-  return NextResponse.json({ template }, { status: 201 });
+    const template = await prisma.$transaction(async (tx) => {
+      if (shouldActivate) {
+        await tx.template.updateMany({ where: { key }, data: { isActive: false } });
+      }
+      return tx.template.create({
+        data: {
+          key,
+          version: nextVersion,
+          name,
+          isActive: shouldActivate,
+          config: JSON.stringify(config),
+        },
+      });
+    });
+
+    return NextResponse.json({ template }, { status: 201 });
+  } catch (err) {
+    return unexpectedErrorResponse(err);
+  }
 }

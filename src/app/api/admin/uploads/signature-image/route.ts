@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveSignatureImage } from "@/lib/storage";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "http://localhost:3000";
 const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB — a signature is a small crop, not a full photo
@@ -30,9 +31,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Image is too large (max 2MB)" }, { status: 400 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const key = await saveSignatureImage(buffer, extension);
-  const url = new URL(`/api/uploads/signatures/${key}`, APP_BASE_URL).toString();
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const key = await saveSignatureImage(buffer, extension);
+    const url = new URL(`/api/uploads/signatures/${key}`, APP_BASE_URL).toString();
 
-  return NextResponse.json({ url });
+    return NextResponse.json({ url });
+  } catch (err) {
+    return unexpectedErrorResponse(err);
+  }
 }
