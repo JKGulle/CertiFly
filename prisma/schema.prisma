@@ -82,7 +82,7 @@ model Certificate {
   templateId         String? // nulled out if the template is later deleted; templateVersion/certificateTitle keep the historical record
   templateVersion    Int
   backgroundImageUrl String?   @db.Text // per-certificate override, carried over on Reissue
-  pdfPath            String // storage key, not a public URL
+  pdfPath            String // storage key: local filename in dev, private Blob URL in production
   sha256             String
   status             String    @default("ISSUED") // ISSUED | REVOKED | REISSUED
   issuedAt           DateTime  @default(now())

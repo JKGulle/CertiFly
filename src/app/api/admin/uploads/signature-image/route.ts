@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { saveSignatureImage } from "@/lib/storage";
+import { isRemoteKey, saveSignatureImage } from "@/lib/storage";
 import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "http://localhost:3000";
@@ -34,7 +34,9 @@ export async function POST(req: NextRequest) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const key = await saveSignatureImage(buffer, extension);
-    const url = new URL(`/api/uploads/signatures/${key}`, APP_BASE_URL).toString();
+    const url = isRemoteKey(key)
+      ? key
+      : new URL(`/api/uploads/signatures/${key}`, APP_BASE_URL).toString();
 
     return NextResponse.json({ url });
   } catch (err) {

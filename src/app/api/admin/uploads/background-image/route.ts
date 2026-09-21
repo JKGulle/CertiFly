@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { saveBackgroundImage } from "@/lib/storage";
+import { isRemoteKey, saveBackgroundImage } from "@/lib/storage";
 import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "http://localhost:3000";
@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const key = await saveBackgroundImage(buffer, extension);
-    const url = new URL(`/api/uploads/backgrounds/${key}`, APP_BASE_URL).toString();
+    const url = isRemoteKey(key)
+      ? key
+      : new URL(`/api/uploads/backgrounds/${key}`, APP_BASE_URL).toString();
 
     return NextResponse.json({ url });
   } catch (err) {
