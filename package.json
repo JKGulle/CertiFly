@@ -6,7 +6,7 @@
     "dev": "next dev",
     "dev:all": "concurrently -k -n web,worker -c blue,magenta \"npm:dev\" \"npm:worker\"",
     "worker": "tsx watch src/worker/index.ts",
-    "build": "next build",
+    "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
