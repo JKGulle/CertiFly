@@ -12,8 +12,6 @@
     "postinstall": "prisma generate",
     "db:up": "node scripts/db-up.mjs",
     "db:down": "node scripts/db-down.mjs",
-    "db:up:docker": "docker compose up -d db",
-    "db:down:docker": "docker compose down",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"

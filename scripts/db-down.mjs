@@ -1,18 +1,17 @@
-// Gracefully shuts down the local MySQL server started by db-up.mjs.
-// Uses mysqladmin (not taskkill) so InnoDB flushes cleanly on shutdown.
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+// Stops (and removes) the Postgres container started by db-up.mjs. The
+// named volume in docker-compose.yml keeps the data across restarts.
+import { spawn } from "node:child_process";
 
-const execFileAsync = promisify(execFile);
-const MYSQLADMIN = String.raw`C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqladmin.exe`;
-
-// Local dev-only credential, set up once by the native MySQL setup in
-// README.md — not a production secret.
-const ROOT_PASSWORD = "certifly_root";
-
-try {
-  await execFileAsync(MYSQLADMIN, ["-u", "root", `-p${ROOT_PASSWORD}`, "shutdown"]);
-  console.log("MySQL stopped.");
-} catch (err) {
-  console.log("MySQL wasn't running (or already stopped).", err.message);
-}
+const child = spawn("docker", ["compose", "down"], { stdio: "inherit" });
+child.once("exit", (code) => {
+  if (code === 0) {
+    console.log("Postgres stopped.");
+  } else {
+    console.error(`docker compose down exited with code ${code}`);
+  }
+  process.exit(code ?? 1);
+});
+child.once("error", (err) => {
+  console.error("Failed to run docker compose:", err.message);
+  process.exit(1);
+});

@@ -42,52 +42,20 @@ Source system --POST /api/events--> EligibilityEvent (queue table, "PENDING")
 ```bash
 npm install
 cp .env.example .env   # already done in this checkout; regenerate DOWNLOAD_TOKEN_SECRET for real use
-npm run db:up          # starts the local MySQL server in the background
-npx prisma migrate dev # applies prisma/migrations against it and seeds a default template
+npm run db:up          # starts the Postgres container (docker-compose.yml) in the background
+npx prisma migrate dev # applies prisma/migrations against it
+npm run db:seed        # seeds a default template and the one admin account
 npm run dev:all        # runs the Next.js app + the queue worker together
 ```
 
-`DATABASE_URL` in `.env.example` points at `mysql://certifly:certifly@localhost:3306/certifly`.
-Point it at any other MySQL 8+ server instead and skip `npm run db:up` if
-you'd rather not run MySQL locally at all.
+`DATABASE_URL` in `.env.example` points at
+`postgresql://certifly:certifly@localhost:5432/certifly`. Point it at any
+other Postgres 14+ server instead and skip `npm run db:up` if you'd rather
+not run Postgres locally at all.
 
-`npm run db:up` / `npm run db:down` start and stop a native `mysqld` as a
-plain background process (see `scripts/db-up.mjs` — no Windows service, no
-Docker required). If you have Docker instead, `npm run db:up:docker` /
-`db:down:docker` use the bundled `docker-compose.yml`.
-
-### First-time native MySQL setup (no Docker)
-
-Only needed once per machine — `npm run db:up` just starts what's already
-set up here. On a fresh machine:
-
-```powershell
-winget install --id Oracle.MySQL
-
-# Data dir + minimal config
-New-Item -ItemType Directory -Path "C:\ProgramData\MySQL\MySQL Server 8.4\Data" -Force
-@"
-[mysqld]
-datadir=C:/ProgramData/MySQL/MySQL Server 8.4/Data
-port=3306
-"@ | Out-File "C:\ProgramData\MySQL\MySQL Server 8.4\my.ini" -Encoding ascii
-
-# Initialize with an empty root password, then lock it down
-& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe" --defaults-file="C:\ProgramData\MySQL\MySQL Server 8.4\my.ini" --initialize-insecure
-npm run db:up
-
-$sql = @"
-ALTER USER 'root'@'localhost' IDENTIFIED BY 'certifly_root';
-CREATE DATABASE IF NOT EXISTS certifly;
-CREATE USER IF NOT EXISTS 'certifly'@'localhost' IDENTIFIED BY 'certifly';
-GRANT ALL PRIVILEGES ON certifly.* TO 'certifly'@'localhost';
-FLUSH PRIVILEGES;
-"@
-$sql | & "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -u root --skip-password
-```
-
-`db-down.mjs` shuts it down with this same `certifly_root` root password —
-it's a local dev-only credential, not a production secret.
+`npm run db:up` / `npm run db:down` wrap `docker compose up -d db` /
+`docker compose down` (see `docker-compose.yml`) — Docker Desktop needs to be
+running first.
 
 Then open:
 
@@ -125,10 +93,10 @@ No SMTP is required for local use — emails are written to
 
 ## Known simplifications (documented, not accidental)
 
-- **Queue**: a polled MySQL table instead of SQS/Kafka — swappable later,
+- **Queue**: a polled Postgres table instead of SQS/Kafka — swappable later,
   the worker's interface (claim a batch, ack, dead-letter) doesn't change.
   Assumes a single worker process; the poll loop doesn't use `SELECT ...
-  FOR UPDATE SKIP LOCKED` (which MySQL 8 does support) for safe concurrent
+  FOR UPDATE SKIP LOCKED` (which Postgres does support) for safe concurrent
   consumers.
 - **Rendering runs inside the Next.js server**, not the standalone worker
   process — `@react-pdf/renderer`'s package exports don't resolve under a
@@ -150,5 +118,5 @@ No SMTP is required for local use — emails are written to
 | Event bus | `EligibilityEvent` table + poll loop | SQS / Kafka / RabbitMQ |
 | Storage | local filesystem | S3 / GCS + CDN |
 | Email | `.eml` files on disk | SES / SendGrid / Postmark |
-| Database | MySQL (local Docker container) | Managed MySQL (RDS / PlanetScale / Cloud SQL) |
+| Database | Postgres (local Docker container) | Managed Postgres (RDS / Neon / Cloud SQL) |
 | Auth | none | OIDC (Auth0 / Cognito) |

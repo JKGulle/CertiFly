@@ -162,7 +162,7 @@ export function CreateCertificateForm({ templates }: { templates: TemplateOption
         </div>
         {uploadError && <p className="text-xs text-danger mt-1">{uploadError}</p>}
         {backgroundImageUrl && (
-          <div className="mt-2 w-32 aspect-[800/566] rounded-md border border-line overflow-hidden bg-surface">
+          <div className="mt-2 w-32 aspect-800/566 rounded-md border border-line overflow-hidden bg-surface">
             <img
               src={backgroundImageUrl}
               alt="Background preview"

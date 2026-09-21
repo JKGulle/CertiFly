@@ -1,12 +1,9 @@
-// Starts the local MySQL server as a plain background process (not a
-// Windows service — registering one needs admin elevation). Safe to run
-// repeatedly: it's a no-op if MySQL is already listening on 3306.
+// Starts the Postgres container defined in docker-compose.yml. Safe to run
+// repeatedly: docker compose is a no-op if it's already up.
 import { spawn } from "node:child_process";
 import net from "node:net";
 
-const MYSQLD = String.raw`C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqld.exe`;
-const CONFIG = String.raw`C:\ProgramData\MySQL\MySQL Server 8.4\my.ini`;
-const PORT = 3306;
+const PORT = 5432;
 
 function isPortOpen(port, host = "127.0.0.1") {
   return new Promise((resolve) => {
@@ -19,27 +16,19 @@ function isPortOpen(port, host = "127.0.0.1") {
   });
 }
 
-if (await isPortOpen(PORT)) {
-  console.log(`MySQL is already running on localhost:${PORT}.`);
-  process.exit(0);
-}
-
-const child = spawn(MYSQLD, [`--defaults-file=${CONFIG}`], {
-  detached: true,
-  stdio: "ignore",
+await new Promise((resolve, reject) => {
+  const child = spawn("docker", ["compose", "up", "-d", "db"], { stdio: "inherit" });
+  child.once("exit", (code) => (code === 0 ? resolve() : reject(new Error(`docker compose exited with code ${code}`))));
+  child.once("error", reject);
 });
-child.unref();
-console.log(`Starting MySQL (pid ${child.pid})...`);
 
-for (let attempt = 0; attempt < 20; attempt++) {
-  await new Promise((resolve) => setTimeout(resolve, 500));
+for (let attempt = 0; attempt < 30; attempt++) {
   if (await isPortOpen(PORT)) {
-    console.log(`MySQL is up on localhost:${PORT}.`);
+    console.log(`Postgres is up on localhost:${PORT}.`);
     process.exit(0);
   }
+  await new Promise((resolve) => setTimeout(resolve, 500));
 }
 
-console.error(
-  `MySQL didn't come up within 10s — check "C:\\ProgramData\\MySQL\\MySQL Server 8.4" for error logs.`
-);
+console.error(`Postgres didn't come up within 15s — check "docker compose logs db".`);
 process.exit(1);

@@ -1,21 +1,20 @@
 services:
   db:
-    image: mysql:8.4
+    image: postgres:16
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: certifly
-      MYSQL_USER: certifly
-      MYSQL_PASSWORD: certifly
-      MYSQL_ROOT_PASSWORD: certifly_root
+      POSTGRES_DB: certifly
+      POSTGRES_USER: certifly
+      POSTGRES_PASSWORD: certifly
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - certifly-mysql:/var/lib/mysql
+      - certifly-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pcertifly_root"]
+      test: ["CMD-SHELL", "pg_isready -U certifly -d certifly"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  certifly-mysql:
+  certifly-postgres:
