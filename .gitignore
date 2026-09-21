@@ -46,3 +46,6 @@ next-env.d.ts
 # stray local clone of the target repo itself, left open in GitHub Desktop —
 # not part of this project's source
 /Web-Apps/
+
+.vercel
+.env*

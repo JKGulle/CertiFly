@@ -44,7 +44,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 className="h-14 w-14 border border-line shadow-soft"
                 priority
               />
-              <span className="font-display text-lg">CertiFly</span>
             </Link>
             <nav className="flex items-center gap-6">
               <NavLink href="/certificates">Release Certificates</NavLink>
