@@ -47,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <span className="font-display text-lg">CertiFly</span>
             </Link>
             <nav className="flex items-center gap-6">
-              <NavLink href="/certificates">Certificates</NavLink>
+              <NavLink href="/certificates">Release Certificates</NavLink>
               <NavLink href="/generate/dashboard">Generate</NavLink>
             </nav>
           </div>
