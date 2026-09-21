@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isRemoteKey, saveSignatureImage } from "@/lib/storage";
+import { saveSignatureImage } from "@/lib/storage";
 import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const APP_BASE_URL = process.env.APP_BASE_URL ?? "http://localhost:3000";
@@ -11,7 +11,8 @@ const ALLOWED_TYPES: Record<string, string> = {
 };
 
 // Same shape as /api/admin/uploads/background-image: upload once, then the
-// returned URL behaves exactly like pasting a hosted image URL into
+// returned URL (this app's own read-proxy — the underlying store is
+// private) behaves exactly like pasting a hosted image URL into
 // signatureImageUrl.
 export async function POST(req: NextRequest) {
   const form = await req.formData().catch(() => null);
@@ -34,9 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const key = await saveSignatureImage(buffer, extension);
-    const url = isRemoteKey(key)
-      ? key
-      : new URL(`/api/uploads/signatures/${key}`, APP_BASE_URL).toString();
+    const url = new URL(`/api/uploads/signatures/${key}`, APP_BASE_URL).toString();
 
     return NextResponse.json({ url });
   } catch (err) {

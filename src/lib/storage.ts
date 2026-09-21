@@ -70,55 +70,51 @@ export async function readCertificatePdf(key: string): Promise<Buffer> {
 }
 
 // Uploaded background images. Keyed by a fresh UUID (never derived from
-// user input), so the local-dev serving route can validate a key's shape
-// before ever touching the filesystem with it. In blob mode the returned
-// key is the public URL directly — @react-pdf/renderer and <img> tags fetch
-// it themselves, no proxy route involved.
+// user input), so the serving route can validate a key's shape before ever
+// touching the filesystem — or, in blob mode, before deriving the blob
+// pathname from it — with it. The store here is private (Blob access is
+// fixed per-store at creation and can't be flipped to public later), so
+// unlike certificates' pdfPath there's no public Blob URL to hand back:
+// every read, local or remote, goes through this app's own
+// /api/uploads/backgrounds/[key] proxy, keeping the returned key the same
+// bare filename shape in both modes.
 export async function saveBackgroundImage(image: Buffer, extension: string): Promise<string> {
+  const key = `${randomUUID()}.${extension}`;
   if (useBlob) {
-    const blob = await put(`backgrounds/${randomUUID()}.${extension}`, image, {
-      access: "public",
+    await put(`backgrounds/${key}`, image, {
+      access: "private",
       contentType: EXTENSION_MIME[extension],
     });
-    return blob.url;
+    return key;
   }
   await mkdir(BACKGROUND_DIR, { recursive: true });
-  const key = `${randomUUID()}.${extension}`;
   await writeFile(path.join(BACKGROUND_DIR, key), image);
   return key;
 }
 
 export async function readBackgroundImage(key: string): Promise<Buffer> {
-  if (isRemoteKey(key)) {
-    const res = await fetch(key);
-    if (!res.ok) throw new Error(`Failed to fetch background image (${res.status})`);
-    return Buffer.from(await res.arrayBuffer());
-  }
+  if (useBlob) return readRemote(`backgrounds/${key}`);
   return readFile(path.join(BACKGROUND_DIR, key));
 }
 
 // Uploaded signature images (electronic signatures for a template's
-// signatories) — same fresh-UUID-keyed, public-in-blob-mode pattern as
-// background images.
+// signatories) — same fresh-UUID-keyed, private-blob-behind-a-proxy pattern
+// as background images.
 export async function saveSignatureImage(image: Buffer, extension: string): Promise<string> {
+  const key = `${randomUUID()}.${extension}`;
   if (useBlob) {
-    const blob = await put(`signatures/${randomUUID()}.${extension}`, image, {
-      access: "public",
+    await put(`signatures/${key}`, image, {
+      access: "private",
       contentType: EXTENSION_MIME[extension],
     });
-    return blob.url;
+    return key;
   }
   await mkdir(SIGNATURE_DIR, { recursive: true });
-  const key = `${randomUUID()}.${extension}`;
   await writeFile(path.join(SIGNATURE_DIR, key), image);
   return key;
 }
 
 export async function readSignatureImage(key: string): Promise<Buffer> {
-  if (isRemoteKey(key)) {
-    const res = await fetch(key);
-    if (!res.ok) throw new Error(`Failed to fetch signature image (${res.status})`);
-    return Buffer.from(await res.arrayBuffer());
-  }
+  if (useBlob) return readRemote(`signatures/${key}`);
   return readFile(path.join(SIGNATURE_DIR, key));
 }
